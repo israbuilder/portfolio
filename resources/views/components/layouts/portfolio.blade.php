@@ -12,9 +12,9 @@
     <meta property="og:description" content="Marketing strategy, AI automation, video production and software built around measurable business growth.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ url()->current() }}">
-    <meta property="og:image" content="{{ asset('images/israel-zepeda-og.jpg') }}">
+    <meta property="og:image" content="{{ asset('images/israbuilder.jpg') }}">
 
-    <link rel="icon" href="{{ asset('favicon.ico') }}">
+    <link rel="icon" href="{{ asset('images/favicon.png') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
