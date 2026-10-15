@@ -3,7 +3,7 @@
     class="fixed inset-x-0 top-0 z-50 border-b transition-all duration-300"
 >
     <div class="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 lg:px-8">
-        <a href="#home" class="group inline-flex items-center gap-3">
+        <a href="{{ route('portfolio.home') }}" class="group inline-flex items-center gap-3">
             <span class="grid size-10 place-items-center rounded-2xl bg-gradient-to-br from-cyan-300 via-blue-400 to-violet-500 font-black text-slate-950 shadow-lg shadow-cyan-500/20 transition duration-300 group-hover:rotate-3 group-hover:scale-105 motion-reduce:transform-none">
                 IZ
             </span>
@@ -14,16 +14,22 @@
         </a>
 
         <nav class="hidden items-center gap-8 md:flex">
+            @php
+                $isHome = request()->routeIs('portfolio.home');
+            @endphp
+
             @foreach ([
                 '#about' => 'About',
                 '#services' => 'Services',
                 '#work' => 'Work',
                 '#experience' => 'Experience',
-            ] as $href => $label)
-                <a href="{{ $href }}" class="nav-link">{{ $label }}</a>
+            ] as $hash => $label)
+                <a href="{{ $isHome ? $hash : route('portfolio.home') . $hash }}" class="nav-link">{{ $label }}</a>
             @endforeach
 
-            <a href="#contact" class="button-primary !px-5 !py-2.5">
+            <a href="{{ route('portfolio.blog.index') }}" class="nav-link {{ request()->routeIs('portfolio.blog.*') ? 'text-cyan-300 font-bold' : '' }}">Blog</a>
+
+            <a href="{{ $isHome ? '#contact' : route('portfolio.home') . '#contact' }}" class="button-primary !px-5 !py-2.5">
                 Start a project
             </a>
         </nav>
@@ -56,15 +62,19 @@
         class="border-t border-white/10 bg-slate-950/95 px-6 py-5 backdrop-blur-xl md:hidden"
     >
         <nav class="grid gap-2">
+            @php
+                $isHome = request()->routeIs('portfolio.home');
+            @endphp
             @foreach ([
                 '#about' => 'About',
                 '#services' => 'Services',
                 '#work' => 'Work',
                 '#experience' => 'Experience',
                 '#contact' => 'Contact',
-            ] as $href => $label)
-                <a @click="mobileOpen = false" href="{{ $href }}" class="mobile-nav-link">{{ $label }}</a>
+            ] as $hash => $label)
+                <a @click="mobileOpen = false" href="{{ $isHome ? $hash : route('portfolio.home') . $hash }}" class="mobile-nav-link">{{ $label }}</a>
             @endforeach
+            <a @click="mobileOpen = false" href="{{ route('portfolio.blog.index') }}" class="mobile-nav-link text-cyan-300 font-bold">Blog</a>
         </nav>
     </div>
 </header>

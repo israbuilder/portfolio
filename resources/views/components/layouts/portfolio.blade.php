@@ -6,13 +6,13 @@
     <meta name="theme-color" content="#020617">
 
     <title>{{ $title ?? 'Israel Zepeda | Digital Marketing, Growth, AI & Software' }}</title>
-    <meta name="description" content="Senior Digital Marketing & Growth Manager specializing in SEO, Google Ads, AI automation, multimedia and software development.">
+    <meta name="description" content="{{ $description ?? 'Senior Digital Marketing & Growth Manager specializing in SEO, Google Ads, AI automation, multimedia and software development.' }}">
 
-    <meta property="og:title" content="Israel Zepeda | Digital Marketing, Growth, AI & Software">
-    <meta property="og:description" content="Marketing strategy, AI automation, video production and software built around measurable business growth.">
-    <meta property="og:type" content="website">
+    <meta property="og:title" content="{{ $title ?? 'Israel Zepeda | Digital Marketing, Growth, AI & Software' }}">
+    <meta property="og:description" content="{{ $description ?? 'Marketing strategy, AI automation, video production and software built around measurable business growth.' }}">
+    <meta property="og:type" content="{{ $ogType ?? 'website' }}">
     <meta property="og:url" content="{{ url()->current() }}">
-    <meta property="og:image" content="{{ asset('images/israbuilder.jpg') }}">
+    <meta property="og:image" content="{{ $image ?? asset('images/israbuilder.jpg') }}">
 
     <link rel="icon" href="{{ asset('images/favicon.png') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])

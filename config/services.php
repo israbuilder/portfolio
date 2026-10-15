@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'blog' => [
+        'api_url' => env('PUBLIC_API_URL'),
+    ],
+
 ];

@@ -6,6 +6,7 @@
         </div>
 
         <div class="flex flex-wrap gap-5 text-sm text-slate-400">
+            <a href="{{ route('portfolio.blog.index') }}" class="transition hover:text-cyan-300">Blog</a>
             <a href="mailto:xencarmarketing@gmail.com" class="transition hover:text-cyan-300">Email</a>
             <a href="https://github.com/israbuilder" target="_blank" rel="noreferrer" class="transition hover:text-cyan-300">GitHub</a>
             <a href="https://linkedin.com/in/israbuilder" target="_blank" rel="noreferrer" class="transition hover:text-cyan-300">Linkedin</a>
