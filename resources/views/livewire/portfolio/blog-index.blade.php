@@ -83,9 +83,9 @@
                 </div>
             @else
                 <!-- Empty state when no posts are available -->
-                <div class="max-w-2xl mx-auto text-center py-20 px-6 rounded-3xl border border-white/10 bg-slate-900/40 backdrop-blur">
-                    <div class="inline-grid size-14 place-items-center rounded-2xl bg-cyan-300/10 text-cyan-300 mb-4">
-                        <svg class="size-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <div class="max-w-2xl mx-auto text-center py-16 px-6 rounded-3xl border border-white/10 bg-slate-900/40 backdrop-blur">
+                    <div class="inline-flex items-center justify-center rounded-2xl bg-cyan-300/10 text-cyan-300 mb-6 mx-auto" style="width: 64px; height: 64px;">
+                        <svg class="size-8 text-cyan-300" style="width: 32px; height: 32px; max-width: 32px; max-height: 32px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/>
                             <path d="M6 6h10"/>
                             <path d="M6 10h10"/>
