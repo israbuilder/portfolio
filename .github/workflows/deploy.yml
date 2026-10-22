@@ -15,12 +15,9 @@ permissions:
   contents: read
 
 jobs:
-  deploy:
-    name: Test, build and deploy
+  test:
+    name: Test and validate
     runs-on: ubuntu-latest
-
-    environment:
-      name: production
 
     steps:
       - name: Checkout repository
@@ -55,7 +52,7 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Build production assets
+      - name: Build frontend assets for tests
         run: npm run build
 
       - name: Run tests
@@ -64,18 +61,35 @@ jobs:
           DB_DATABASE: database/database.sqlite
         run: php artisan test
 
-      - name: Remove files not needed for transfer
-        run: |
-          rm -rf node_modules
-          rm -rf vendor
-          rm -f .env
+  deploy:
+    name: Deploy to VPS
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: production
 
-      - name: Configure SSH
+    steps:
+      - name: Configure SSH and Validate Target Path
         env:
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_PORT: ${{ secrets.VPS_PORT }}
+          SUBDIR: ${{ secrets.VPS_PATH }}
         run: |
+          set -euo pipefail
+
+          # 1. Path traversal and empty variable guardrail
+          if [ -z "${SUBDIR// }" ]; then
+            echo "::error::CRITICAL ERROR: VPS_PATH is not defined or is empty in GitHub Secrets."
+            exit 1
+          fi
+
+          if [[ "$SUBDIR" == /* ]] || [[ "$SUBDIR" == *".."* ]]; then
+            echo "::error::CRITICAL ERROR: VPS_PATH must not start with a leading slash '/' or contain '..': $SUBDIR"
+            exit 1
+          fi
+
+          # 2. Configure SSH credentials on the GitHub Actions runner
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
           printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
@@ -83,75 +97,89 @@ jobs:
           ssh-keyscan -p "$VPS_PORT" -H "$VPS_HOST" >> ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
-      - name: Enable maintenance mode
+      - name: Execute remote Git deployment
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
           VPS_PORT: ${{ secrets.VPS_PORT }}
-          VPS_PATH: ${{ secrets.VPS_PATH }}
+          SUBDIR: ${{ secrets.VPS_PATH }}
         run: |
-          ssh \
-            -i ~/.ssh/deploy_key \
-            -p "$VPS_PORT" \
-            "$VPS_USER@$VPS_HOST" \
-            "mkdir -p '$VPS_PATH' && cd '$VPS_PATH' && php artisan down --retry=60 || true"
+          set -euo pipefail
+          TARGET_PATH="/var/www/$SUBDIR"
 
-      - name: Upload application
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_PORT: ${{ secrets.VPS_PORT }}
-          VPS_PATH: ${{ secrets.VPS_PATH }}
-        run: |
-          rsync -az \
-            --delete \
-            --exclude='.env' \
-            --exclude='.git/' \
-            --exclude='.github/' \
-            --exclude='storage/' \
-            --exclude='bootstrap/cache/' \
-            --exclude='vendor/' \
-            --exclude='node_modules/' \
-            -e "ssh -i ~/.ssh/deploy_key -p $VPS_PORT" \
-            ./ \
-            "$VPS_USER@$VPS_HOST:$VPS_PATH/"
+          ssh -i ~/.ssh/deploy_key -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" "bash -s" << 'EOF' "$TARGET_PATH"
+            set -euo pipefail
 
-      - name: Complete Laravel deployment
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_PORT: ${{ secrets.VPS_PORT }}
-          VPS_PATH: ${{ secrets.VPS_PATH }}
-        run: |
-          ssh \
-            -i ~/.ssh/deploy_key \
-            -p "$VPS_PORT" \
-            "$VPS_USER@$VPS_HOST" "VPS_PATH='$VPS_PATH' bash -s" << 'EOF'
-              set -e
+            APP_PATH="$1"
 
-              cd "$VPS_PATH"
+            # 1. Precondition checks: directory, git repo, and production environment file
+            if [ ! -d "$APP_PATH" ]; then
+              echo "ERROR: Target directory $APP_PATH does not exist on the server."
+              exit 1
+            fi
 
-              test -f .env || {
-                echo "ERROR: Production .env does not exist"
-                exit 1
-              }
+            cd "$APP_PATH"
 
-              composer install \
-                --no-dev \
-                --prefer-dist \
-                --optimize-autoloader \
-                --no-interaction \
-                --no-progress
+            if [ ! -d ".git" ]; then
+              echo "ERROR: $APP_PATH is not a valid Git repository."
+              exit 1
+            fi
 
-              php artisan migrate --force
+            if [ ! -f .env ]; then
+              echo "ERROR: Production .env file does not exist in $APP_PATH."
+              exit 1
+            fi
 
-              php artisan optimize:clear
-              php artisan optimize
+            # 2. Enter maintenance mode
+            php artisan down --retry=60 || true
 
-              php artisan storage:link || true
-              php artisan queue:restart || true
+            # 3. Pull latest code cleanly via Git (preserves untracked files like .env and storage)
+            git fetch origin main
+            git reset --hard origin/main
 
-              php artisan about --only=environment
+            # Enforce Node 22 binary path from NVM
+            export PATH=/root/.nvm/versions/node/v22.22.0/bin:$PATH
 
-              php artisan up
+            # 4. Install production PHP dependencies
+            composer install \
+              --no-dev \
+              --prefer-dist \
+              --optimize-autoloader \
+              --no-interaction \
+              --no-progress
+
+            # 5. Build frontend assets if package.json exists (leverages swap to prevent OOM)
+            if [ -f "package.json" ]; then
+              npm ci --prefer-offline --no-audit
+              npm run build
+              rm -rf node_modules
+            fi
+
+            # 6. Database migrations and framework cache optimization
+            php artisan migrate --force
+            php artisan optimize:clear
+            php artisan optimize
+
+            php artisan storage:link || true
+            php artisan queue:restart || true
+
+            # 7. Ensure correct file ownership and permissions for the web server
+            sudo chown -R www-data:www-data storage bootstrap/cache
+            sudo chmod -R 775 storage bootstrap/cache
+
+            # 8. Bring the application back online
+            php artisan up
+            php artisan about --only=environment
           EOF
+
+      - name: Restore application on failure
+        if: failure()
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          SUBDIR: ${{ secrets.VPS_PATH }}
+        run: |
+          TARGET_PATH="/var/www/$SUBDIR"
+          ssh -i ~/.ssh/deploy_key -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" \
+            "cd '$TARGET_PATH' && php artisan up || true"
