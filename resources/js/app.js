@@ -27,13 +27,6 @@ Alpine.data('portfolioShell', () => ({
         window.addEventListener('portfolio-filtered', () => {
             requestAnimationFrame(() => this.setupRevealObserver());
         });
-
-        window.addEventListener('contact-sent', () => {
-            document.querySelector('#contact')?.scrollIntoView({
-                behavior: this.reduceMotion ? 'auto' : 'smooth',
-                block: 'center',
-            });
-        });
     },
 
     setupRevealObserver() {

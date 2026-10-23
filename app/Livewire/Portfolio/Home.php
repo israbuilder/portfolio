@@ -21,6 +21,7 @@ class Home extends Component
     public string $message = '';
 
     public bool $messageSent = false;
+    public ?string $whatsappRedirectUrl = null;
 
     #[Locked]
     public array $categories = [
@@ -68,11 +69,33 @@ class Home extends Component
          */
         logger()->info('Portfolio contact request', $validated);
 
+        $serviceLabels = [
+            'marketing' => 'Marketing & Growth',
+            'web-development' => 'Website / Software',
+            'ai-automation' => 'AI Automation',
+            'multimedia' => 'Video & Multimedia',
+            'consulting' => 'Consulting',
+        ];
+
+        $serviceName = $serviceLabels[$validated['service']] ?? $validated['service'];
+        $companyText = ! empty($validated['company']) ? $validated['company'] : 'N/A';
+
+        $whatsappMessage = "*New project inquiry (israbuilder.com)*\n\n"
+            . "*Name:* {$validated['name']}\n"
+            . "*Email:* {$validated['email']}\n"
+            . "*Company:* {$companyText}\n"
+            . "*Service:* {$serviceName}\n\n"
+            . "*Project details:*\n{$validated['message']}";
+
+        $phone = '12817285637';
+        $whatsappUrl = 'https://wa.me/' . $phone . '?text=' . rawurlencode($whatsappMessage);
+
+        $this->whatsappRedirectUrl = $whatsappUrl;
         $this->reset(['name', 'email', 'company', 'service', 'message']);
         $this->messageSent = true;
         $this->resetValidation();
 
-        $this->dispatch('contact-sent');
+        $this->dispatch('contact-sent', url: $whatsappUrl);
     }
 
     public function getFilteredProjectsProperty(): array
